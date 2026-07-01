@@ -3,16 +3,13 @@ import { useGetAssessment, getGetAssessmentQueryKey } from "@workspace/api-clien
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, ArrowLeft, Download, CheckCircle, Info, HeartPulse } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle, Info, HeartPulse } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
 import { format } from "date-fns";
 
 export default function ResultsPage() {
   const [, params] = useRoute("/results/:id");
   const id = params?.id ? parseInt(params.id, 10) : null;
-  const { token } = useAuth();
   
   const { data: assessment, isLoading } = useGetAssessment(id!, {
     query: {
@@ -33,30 +30,6 @@ export default function ResultsPage() {
       </div>
     );
   }
-
-  const handleDownload = async () => {
-    try {
-      const response = await fetch(`/api/assessment/${id}/report`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error("Failed to download");
-      
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `MindCheck-Report-${format(new Date(assessment.created_at), "yyyy-MM-dd")}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Report downloaded successfully");
-    } catch (error) {
-      toast.error("Failed to download report");
-    }
-  };
 
   const getRiskDetails = (level: string) => {
     switch (level.toLowerCase()) {
@@ -91,10 +64,6 @@ export default function ResultsPage() {
             Completed on {format(new Date(assessment.created_at), "MMMM d, yyyy 'at' h:mm a")}
           </p>
         </div>
-        <Button onClick={handleDownload} variant="outline" className="hidden sm:flex">
-          <Download className="w-4 h-4 mr-2" />
-          Download PDF
-        </Button>
       </div>
 
       {/* Main Score Card */}
@@ -231,13 +200,6 @@ export default function ResultsPage() {
           </div>
         </CardContent>
       </Card>
-      
-      <div className="flex sm:hidden justify-center pt-4">
-        <Button onClick={handleDownload} variant="outline" className="w-full">
-          <Download className="w-4 h-4 mr-2" />
-          Download PDF Report
-        </Button>
-      </div>
     </div>
   );
 }
