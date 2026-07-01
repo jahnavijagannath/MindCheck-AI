@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: MindCheck AI - Mental Health Risk & Mood Pattern Analysis API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: assessment
+    description: Mental health assessment operations
+  - name: prediction
+    description: ML prediction operations
+  - name: report
+    description: PDF report operations
+  - name: admin
+    description: Admin panel operations
 paths:
   /healthz:
     get:
@@ -24,7 +34,339 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegistration"
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error or email already exists
+
+  /login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLogin"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [auth]
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update user profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /assessment:
+    post:
+      operationId: submitAssessment
+      tags: [assessment]
+      summary: Submit a mental health assessment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentInput"
+      responses:
+        "201":
+          description: Assessment submitted and prediction generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentResult"
+        "401":
+          description: Unauthorized
+
+  /assessment/history:
+    get:
+      operationId: getAssessmentHistory
+      tags: [assessment]
+      summary: Get assessment history for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of past assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssessmentResult"
+        "401":
+          description: Unauthorized
+
+  /assessment/latest:
+    get:
+      operationId: getLatestAssessment
+      tags: [assessment]
+      summary: Get the latest assessment for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Latest assessment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentResult"
+        "404":
+          description: No assessment found
+        "401":
+          description: Unauthorized
+
+  /assessment/{id}:
+    get:
+      operationId: getAssessment
+      tags: [assessment]
+      summary: Get a specific assessment by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assessment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentResult"
+        "404":
+          description: Assessment not found
+        "401":
+          description: Unauthorized
+
+  /predict:
+    post:
+      operationId: predict
+      tags: [prediction]
+      summary: Get ML prediction for assessment answers
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentInput"
+      responses:
+        "200":
+          description: Prediction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionResult"
+        "401":
+          description: Unauthorized
+
+  /report/{id}:
+    get:
+      operationId: downloadReport
+      tags: [report]
+      summary: Download PDF report for an assessment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDF report file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Assessment not found
+        "401":
+          description: Unauthorized
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [assessment]
+      summary: Get dashboard summary stats for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Unauthorized
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLogin"
+      responses:
+        "200":
+          description: Admin login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials or not admin
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get admin dashboard statistics
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Admin statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+        "403":
+          description: Forbidden - admin only
+
+  /admin/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: Get all users (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "403":
+          description: Forbidden - admin only
+
+  /admin/assessments:
+    get:
+      operationId: getAdminAssessments
+      tags: [admin]
+      summary: Get all assessments (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of all assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminAssessmentRow"
+        "403":
+          description: Forbidden - admin only
+
+  /admin/export-csv:
+    get:
+      operationId: exportCsv
+      tags: [admin]
+      summary: Export assessments as CSV (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+        "403":
+          description: Forbidden - admin only
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +376,238 @@ components:
       required:
         - status
 
+    UserRegistration:
+      type: object
+      required: [full_name, email, password, age, gender, occupation]
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        age:
+          type: integer
+          minimum: 10
+          maximum: 120
+        gender:
+          type: string
+          enum: [Male, Female, Other, Prefer not to say]
+        occupation:
+          type: string
+
+    UserLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        full_name:
+          type: string
+        age:
+          type: integer
+        gender:
+          type: string
+        occupation:
+          type: string
+
+    User:
+      type: object
+      required: [id, full_name, email, age, gender, occupation, is_admin, created_at]
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+        email:
+          type: string
+        age:
+          type: integer
+        gender:
+          type: string
+        occupation:
+          type: string
+        is_admin:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    AssessmentInput:
+      type: object
+      required: [social_media_hours, sleep_quality, stress_frequency, social_comparison, exercise_frequency, mood]
+      properties:
+        social_media_hours:
+          type: string
+          enum: ["Less than 2 Hours", "2-4 Hours", "4-6 Hours", "More than 6 Hours"]
+        sleep_quality:
+          type: string
+          enum: ["Very Good", "Good", "Average", "Poor"]
+        stress_frequency:
+          type: string
+          enum: ["Never", "Sometimes", "Often", "Always"]
+        social_comparison:
+          type: string
+          enum: ["Never", "Rarely", "Sometimes", "Frequently"]
+        exercise_frequency:
+          type: string
+          enum: ["Daily", "3-5 Times Weekly", "1-2 Times Weekly", "Rarely"]
+        mood:
+          type: string
+          enum: ["Happy", "Calm", "Neutral", "Sad"]
+
+    PredictionResult:
+      type: object
+      required: [risk_level, confidence, digital_wellbeing_score, mood_score, feature_importance, recommendations]
+      properties:
+        risk_level:
+          type: string
+          enum: ["Low", "Moderate", "High"]
+        confidence:
+          type: number
+        digital_wellbeing_score:
+          type: number
+        mood_score:
+          type: number
+        feature_importance:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeatureImportance"
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    FeatureImportance:
+      type: object
+      required: [feature, importance, label]
+      properties:
+        feature:
+          type: string
+        importance:
+          type: number
+        label:
+          type: string
+
+    AssessmentResult:
+      type: object
+      required: [id, user_id, created_at, answers, prediction]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        answers:
+          $ref: "#/components/schemas/AssessmentInput"
+        prediction:
+          $ref: "#/components/schemas/PredictionResult"
+
+    DashboardSummary:
+      type: object
+      required: [total_assessments, latest_risk_level, latest_digital_wellbeing_score, latest_mood_score, risk_trend, mood_trend]
+      properties:
+        total_assessments:
+          type: integer
+        latest_risk_level:
+          type: ["string", "null"]
+        latest_digital_wellbeing_score:
+          type: ["number", "null"]
+        latest_mood_score:
+          type: ["number", "null"]
+        risk_trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+        mood_trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+        wellbeing_trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+
+    TrendPoint:
+      type: object
+      required: [date, value]
+      properties:
+        date:
+          type: string
+        value:
+          type: number
+        label:
+          type: ["string", "null"]
+
+    AdminStats:
+      type: object
+      required: [total_users, total_assessments, avg_risk_score, risk_distribution, recent_users, recent_assessments]
+      properties:
+        total_users:
+          type: integer
+        total_assessments:
+          type: integer
+        avg_risk_score:
+          type: number
+        risk_distribution:
+          type: object
+          properties:
+            Low:
+              type: integer
+            Moderate:
+              type: integer
+            High:
+              type: integer
+        recent_users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        recent_assessments:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminAssessmentRow"
+
+    AdminAssessmentRow:
+      type: object
+      required: [id, user_id, user_name, user_email, risk_level, digital_wellbeing_score, mood_score, created_at]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        user_name:
+          type: string
+        user_email:
+          type: string
+        risk_level:
+          type: string
+        digital_wellbeing_score:
+          type: number
+        mood_score:
+          type: number
+        created_at:
+          type: string
+          format: date-time

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "MindCheck AI"
+version = "1.0.0"
+id = "artifacts/mindcheck"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24161
+
+[services.development]
+run = "pnpm --filter @workspace/mindcheck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mindcheck", "run", "build" ]
+publicDir = "artifacts/mindcheck/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24161"
+BASE_PATH = "/"

@@ -1,0 +1,357 @@
+"""
+PDF report generator using ReportLab.
+Produces a professional A4 report for a completed mental health assessment.
+"""
+
+import io
+from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    HRFlowable, KeepTogether
+)
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
+# ─────────────────────────────────────────
+# Brand colors
+# ─────────────────────────────────────────
+
+BRAND_BLUE = colors.HexColor("#1a56db")
+BRAND_LIGHT = colors.HexColor("#eff6ff")
+TEXT_DARK = colors.HexColor("#111827")
+TEXT_GRAY = colors.HexColor("#6b7280")
+SUCCESS_GREEN = colors.HexColor("#059669")
+WARNING_AMBER = colors.HexColor("#d97706")
+DANGER_RED = colors.HexColor("#dc2626")
+BORDER_GRAY = colors.HexColor("#e5e7eb")
+
+
+def _risk_color(risk_level: str) -> colors.Color:
+    """Return the color associated with a risk level."""
+    mapping = {
+        "Low": SUCCESS_GREEN,
+        "Moderate": WARNING_AMBER,
+        "High": DANGER_RED,
+    }
+    return mapping.get(risk_level, TEXT_DARK)
+
+
+def _score_color(score: float) -> colors.Color:
+    """Return color based on a 0-100 score."""
+    if score >= 70:
+        return SUCCESS_GREEN
+    elif score >= 45:
+        return WARNING_AMBER
+    return DANGER_RED
+
+
+def generate_pdf_report(
+    user: dict,
+    assessment: dict,
+    prediction: dict,
+) -> bytes:
+    """
+    Generate a professional PDF report as bytes.
+
+    Args:
+        user: dict with full_name, email, age, gender, occupation
+        assessment: dict with id, created_at, answers dict
+        prediction: dict with risk_level, confidence, digital_wellbeing_score,
+                    mood_score, feature_importance list, recommendations list
+
+    Returns:
+        PDF content as bytes
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+        title=f"MindCheck AI — Mental Health Report #{assessment['id']}",
+        author="MindCheck AI",
+    )
+
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    title_style = ParagraphStyle(
+        "Title",
+        parent=styles["Normal"],
+        fontSize=22,
+        fontName="Helvetica-Bold",
+        textColor=BRAND_BLUE,
+        spaceAfter=4,
+        alignment=TA_CENTER,
+    )
+    subtitle_style = ParagraphStyle(
+        "Subtitle",
+        parent=styles["Normal"],
+        fontSize=11,
+        fontName="Helvetica",
+        textColor=TEXT_GRAY,
+        spaceAfter=2,
+        alignment=TA_CENTER,
+    )
+    section_header_style = ParagraphStyle(
+        "SectionHeader",
+        parent=styles["Normal"],
+        fontSize=13,
+        fontName="Helvetica-Bold",
+        textColor=BRAND_BLUE,
+        spaceBefore=14,
+        spaceAfter=6,
+    )
+    body_style = ParagraphStyle(
+        "Body",
+        parent=styles["Normal"],
+        fontSize=10,
+        fontName="Helvetica",
+        textColor=TEXT_DARK,
+        spaceAfter=4,
+        leading=15,
+    )
+    label_style = ParagraphStyle(
+        "Label",
+        parent=styles["Normal"],
+        fontSize=9,
+        fontName="Helvetica-Bold",
+        textColor=TEXT_GRAY,
+    )
+    value_style = ParagraphStyle(
+        "Value",
+        parent=styles["Normal"],
+        fontSize=10,
+        fontName="Helvetica",
+        textColor=TEXT_DARK,
+    )
+    rec_style = ParagraphStyle(
+        "Rec",
+        parent=styles["Normal"],
+        fontSize=10,
+        fontName="Helvetica",
+        textColor=TEXT_DARK,
+        leftIndent=12,
+        spaceAfter=5,
+        leading=15,
+    )
+    disclaimer_style = ParagraphStyle(
+        "Disclaimer",
+        parent=styles["Normal"],
+        fontSize=8,
+        fontName="Helvetica-Oblique",
+        textColor=TEXT_GRAY,
+        alignment=TA_CENTER,
+        spaceAfter=4,
+    )
+
+    story = []
+
+    # ─── Header ───────────────────────────────────────────────────────────────
+    story.append(Spacer(1, 0.3 * cm))
+    story.append(Paragraph("🧠 MindCheck AI", title_style))
+    story.append(Paragraph("Mental Health Risk Assessment Report", subtitle_style))
+    story.append(Spacer(1, 0.2 * cm))
+    story.append(HRFlowable(width="100%", thickness=2, color=BRAND_BLUE))
+    story.append(Spacer(1, 0.4 * cm))
+
+    # ─── Report Metadata ──────────────────────────────────────────────────────
+    report_date = assessment.get("created_at", datetime.utcnow())
+    if isinstance(report_date, str):
+        try:
+            report_date = datetime.fromisoformat(report_date.replace("Z", "+00:00"))
+        except Exception:
+            report_date = datetime.utcnow()
+
+    meta_data = [
+        ["Report ID", f"#{assessment.get('id', 'N/A')}",
+         "Date", report_date.strftime("%B %d, %Y at %I:%M %p")],
+        ["Generated By", "MindCheck AI Engine", "Version", "1.0.0"],
+    ]
+    meta_table = Table(meta_data, colWidths=[3 * cm, 7 * cm, 2.5 * cm, 5 * cm])
+    meta_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("TEXTCOLOR", (0, 0), (0, -1), TEXT_GRAY),
+        ("TEXTCOLOR", (2, 0), (2, -1), TEXT_GRAY),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_LIGHT),
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [BRAND_LIGHT, colors.white]),
+        ("BOX", (0, 0), (-1, -1), 0.5, BORDER_GRAY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, BORDER_GRAY),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 0.5 * cm))
+
+    # ─── User Information ─────────────────────────────────────────────────────
+    story.append(Paragraph("User Information", section_header_style))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_GRAY))
+    story.append(Spacer(1, 0.2 * cm))
+
+    user_data = [
+        [Paragraph("Full Name", label_style), Paragraph(user.get("full_name", "—"), value_style),
+         Paragraph("Email", label_style), Paragraph(user.get("email", "—"), value_style)],
+        [Paragraph("Age", label_style), Paragraph(str(user.get("age", "—")), value_style),
+         Paragraph("Gender", label_style), Paragraph(user.get("gender", "—"), value_style)],
+        [Paragraph("Occupation", label_style), Paragraph(user.get("occupation", "—"), value_style),
+         Paragraph("", label_style), Paragraph("", value_style)],
+    ]
+    user_table = Table(user_data, colWidths=[3 * cm, 7 * cm, 3 * cm, 5 * cm])
+    user_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, BRAND_LIGHT]),
+    ]))
+    story.append(user_table)
+
+    # ─── Risk Summary ─────────────────────────────────────────────────────────
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph("Risk Assessment Summary", section_header_style))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_GRAY))
+    story.append(Spacer(1, 0.2 * cm))
+
+    risk_level = prediction.get("risk_level", "Unknown")
+    confidence = prediction.get("confidence", 0)
+    wb_score = prediction.get("digital_wellbeing_score", 0)
+    mood_score = prediction.get("mood_score", 0)
+
+    summary_data = [
+        ["MENTAL HEALTH RISK", "CONFIDENCE", "DIGITAL WELLBEING", "MOOD SCORE"],
+        [risk_level, f"{confidence * 100:.1f}%", f"{wb_score:.1f} / 100", f"{mood_score:.1f} / 100"],
+    ]
+    summary_table = Table(summary_data, colWidths=[4.5 * cm, 4 * cm, 4.5 * cm, 4.5 * cm])
+    risk_color = _risk_color(risk_level)
+    wb_color = _score_color(wb_score)
+    mood_color = _score_color(mood_score)
+
+    summary_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("TEXTCOLOR", (0, 0), (-1, 0), TEXT_GRAY),
+        ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 1), (-1, 1), 16),
+        ("TEXTCOLOR", (0, 1), (0, 1), risk_color),
+        ("TEXTCOLOR", (2, 1), (2, 1), wb_color),
+        ("TEXTCOLOR", (3, 1), (3, 1), mood_color),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BACKGROUND", (0, 0), (-1, 0), BRAND_LIGHT),
+        ("BOX", (0, 0), (-1, -1), 1, BRAND_BLUE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_GRAY),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    story.append(summary_table)
+
+    # ─── Assessment Answers ───────────────────────────────────────────────────
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph("Assessment Responses", section_header_style))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_GRAY))
+    story.append(Spacer(1, 0.2 * cm))
+
+    answers = assessment.get("answers", {})
+    answer_rows = [
+        ["Question", "Response"],
+        ["Daily social media usage", answers.get("social_media_hours", "—")],
+        ["Sleep quality", answers.get("sleep_quality", "—")],
+        ["Stress frequency", answers.get("stress_frequency", "—")],
+        ["Social comparison frequency", answers.get("social_comparison", "—")],
+        ["Exercise frequency", answers.get("exercise_frequency", "—")],
+        ["Current mood", answers.get("mood", "—")],
+    ]
+    answers_table = Table(answer_rows, colWidths=[9 * cm, 8.5 * cm])
+    answers_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 10),
+        ("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_LIGHT]),
+        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 1), (-1, -1), 10),
+        ("TEXTCOLOR", (0, 1), (-1, -1), TEXT_DARK),
+        ("BOX", (0, 0), (-1, -1), 0.5, BORDER_GRAY),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, BORDER_GRAY),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    story.append(answers_table)
+
+    # ─── Feature Importance ───────────────────────────────────────────────────
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph("Key Contributing Factors (Top 3)", section_header_style))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_GRAY))
+    story.append(Spacer(1, 0.2 * cm))
+
+    feature_importance = prediction.get("feature_importance", [])[:3]
+    if feature_importance:
+        fi_rows = [["Factor", "Importance Score", "Impact Level"]]
+        for fi in feature_importance:
+            score = fi.get("importance", 0)
+            if score > 0.25:
+                impact = "High"
+            elif score > 0.12:
+                impact = "Moderate"
+            else:
+                impact = "Low"
+            fi_rows.append([fi.get("label", fi.get("feature", "—")),
+                             f"{score:.3f}", impact])
+
+        fi_table = Table(fi_rows, colWidths=[9 * cm, 5 * cm, 3.5 * cm])
+        fi_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 10),
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_LIGHT]),
+            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 1), (-1, -1), 10),
+            ("TEXTCOLOR", (0, 1), (-1, -1), TEXT_DARK),
+            ("BOX", (0, 0), (-1, -1), 0.5, BORDER_GRAY),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, BORDER_GRAY),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        story.append(fi_table)
+
+    # ─── Recommendations ──────────────────────────────────────────────────────
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph("Personalized Recommendations", section_header_style))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_GRAY))
+    story.append(Spacer(1, 0.2 * cm))
+
+    recommendations = prediction.get("recommendations", [])
+    for i, rec in enumerate(recommendations, 1):
+        story.append(Paragraph(f"{i}. {rec}", rec_style))
+
+    # ─── Disclaimer ───────────────────────────────────────────────────────────
+    story.append(Spacer(1, 0.6 * cm))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_GRAY))
+    story.append(Spacer(1, 0.3 * cm))
+    story.append(Paragraph(
+        "DISCLAIMER: This report is generated by an AI system for informational purposes only. "
+        "It does not constitute medical advice or a clinical diagnosis. "
+        "Please consult a qualified mental health professional for diagnosis and treatment.",
+        disclaimer_style,
+    ))
+    story.append(Paragraph(
+        f"Report generated on {datetime.utcnow().strftime('%B %d, %Y')} · MindCheck AI © 2024",
+        disclaimer_style,
+    ))
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
