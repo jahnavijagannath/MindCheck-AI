@@ -47,3 +47,22 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+
+# Database
+*.db
+
+# Model artifacts (optional)
+# Uncomment if you don't want to store trained models
+# trained_models/
+
+# Python cache
+.pytest_cache/
+.mypy_cache/

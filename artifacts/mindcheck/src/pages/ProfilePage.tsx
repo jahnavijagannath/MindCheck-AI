@@ -33,7 +33,7 @@ export default function ProfilePage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       full_name: "",
-      age: undefined as unknown as number,
+      age: 18,
       gender: "",
       occupation: "",
     },

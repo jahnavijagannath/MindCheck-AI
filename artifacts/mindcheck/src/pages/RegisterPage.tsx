@@ -38,7 +38,7 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirm_password: "",
-      age: undefined as unknown as number,
+      age: 18,
       gender: UserRegistrationGender.Male,
       occupation: "",
     },

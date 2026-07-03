@@ -20,36 +20,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedToken = localStorage.getItem("mindcheck_token");
     const storedUser = localStorage.getItem("mindcheck_user");
 
-    if (storedToken && storedUser) {
+    if (storedToken) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setAuthTokenGetter(() => storedToken);
+      setAuthTokenGetter(() => localStorage.getItem("mindcheck_token"));
     }
+
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem("mindcheck_user");
+      }
+    }
+
     setLoading(false);
   }, []);
 
   const login = (newToken: string, newUser: User) => {
+    console.log("Saving token:", newToken);
+
     localStorage.setItem("mindcheck_token", newToken);
     localStorage.setItem("mindcheck_user", JSON.stringify(newUser));
+
     setToken(newToken);
     setUser(newUser);
-    setAuthTokenGetter(() => newToken);
+
+    setAuthTokenGetter(() => localStorage.getItem("mindcheck_token"));
   };
 
   const logout = () => {
     localStorage.removeItem("mindcheck_token");
     localStorage.removeItem("mindcheck_user");
+
     setToken(null);
     setUser(null);
-    setAuthTokenGetter(null);
+
+    setAuthTokenGetter(() => null);
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background text-foreground"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div></div>;
+    return null;
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -57,8 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
   }
+
   return context;
 }
