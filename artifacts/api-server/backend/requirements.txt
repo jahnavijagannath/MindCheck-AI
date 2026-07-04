@@ -16,3 +16,4 @@ python-multipart==0.0.20
 pydantic[email]==2.10.3
 reportlab==4.2.5
 joblib==1.4.2
+email-validator>=2.0.0
