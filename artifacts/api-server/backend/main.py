@@ -1,12 +1,8 @@
 """
 MindCheck AI — FastAPI Application Entry Point
-
-Configures the FastAPI app, CORS, route registration,
-database initialization, and ML model startup.
 """
 
 import os
-import sys
 import logging
 
 from fastapi import FastAPI
@@ -19,19 +15,11 @@ from routes.prediction import router as prediction_router
 from routes.report import router as report_router
 from routes.admin import router as admin_router
 
-# ─────────────────────────────────────────
-# Logging
-# ─────────────────────────────────────────
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("mindcheck")
-
-# ─────────────────────────────────────────
-# FastAPI app
-# ─────────────────────────────────────────
 
 app = FastAPI(
     title="MindCheck AI API",
@@ -42,7 +30,6 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
-# CORS — allow all origins in development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -51,43 +38,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─────────────────────────────────────────
-# Database initialization
-# ─────────────────────────────────────────
 
 @app.on_event("startup")
 def startup_event():
-    """
-    On startup:
-    1. Create all database tables
-    2. Create the default admin account if it doesn't exist
-    3. Ensure the ML model is trained and ready
-    """
     logger.info("Starting MindCheck AI API...")
 
-    # Create all tables
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables ready.")
 
-    # Create default admin account
     _seed_admin()
-
-    # Ensure ML model exists
     _ensure_model()
 
     logger.info("MindCheck AI API is ready.")
 
 
 def _seed_admin():
-    """Create the default admin user if one doesn't exist yet."""
     from sqlalchemy.orm import Session
     from database import SessionLocal
     import models
     from auth import hash_password
 
     db: Session = SessionLocal()
+
     try:
-        admin = db.query(models.User).filter(models.User.is_admin == True).first()
+        admin = db.query(models.User).filter(
+            models.User.is_admin == True
+        ).first()
+
         if not admin:
             admin = models.User(
                 full_name="Admin",
@@ -100,32 +77,50 @@ def _seed_admin():
             )
             db.add(admin)
             db.commit()
-            logger.info("Default admin account created: admin@mindcheck.ai / admin123")
+            logger.info("Default admin account created.")
     finally:
         db.close()
 
 
 def _ensure_model():
-    """Train the ML model if it hasn't been trained yet."""
-    import os
-    models_dir = os.path.join(os.path.dirname(__file__), "trained_models")
-    model_path = os.path.join(models_dir, "best_model.pkl")
+    models_dir = os.path.join(
+        os.path.dirname(__file__),
+        "trained_models",
+    )
+
+    model_path = os.path.join(
+        models_dir,
+        "best_model.pkl",
+    )
 
     if not os.path.exists(model_path):
-        logger.info("Trained model not found. Training now (this may take 10-30 seconds)...")
-        try:
-            from ml.train import train_and_save
-            train_and_save()
-            logger.info("ML model trained and saved successfully.")
-        except Exception as e:
-            logger.error(f"Failed to train model: {e}")
+        logger.info("Training ML model...")
+        from ml.train import train_and_save
+        train_and_save()
     else:
         logger.info("Trained ML model found.")
 
 
-# ─────────────────────────────────────────
-# Route registration (all under /api prefix)
-# ─────────────────────────────────────────
+# ---------------- ROOT ----------------
+
+@app.get("/")
+def root():
+    return {
+        "status": "success",
+        "message": "MindCheck AI Backend is Running!",
+        "docs": "/api/docs",
+        "health": "/api/healthz"
+    }
+
+
+@app.get("/api/healthz")
+def health():
+    return {
+        "status": "ok"
+    }
+
+
+# ---------------- ROUTERS ----------------
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(assessment_router, prefix="/api")
@@ -134,34 +129,14 @@ app.include_router(report_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 
 
-# ─────────────────────────────────────────
-# Health check
-# ─────────────────────────────────────────
-
-@app.get("/api/healthz")
-def health_check():
-    """Basic health check endpoint."""
-    return {"status": "ok"}
-
-
-# ─────────────────────────────────────────
-# Entrypoint
-# ─────────────────────────────────────────
-
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.environ.get("PORT", 8080))
-    logger.info(f"Starting uvicorn on port {port}...")
+    port = int(os.environ.get("PORT", 10000))
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=port,
         reload=False,
-        log_level="info",
     )
-@app.get("/")
-def root():
-    return {
-        "message": "MindCheck AI Backend is Running!"
-    }
