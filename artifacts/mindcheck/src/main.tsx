@@ -8,7 +8,7 @@ import { AuthProvider } from "./context/AuthContext";
 import "./index.css";
 
 // Backend URL
-setBaseUrl("http://localhost:8080");
+setBaseUrl("https://mindcheck-ai-3.onrender.com");
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
