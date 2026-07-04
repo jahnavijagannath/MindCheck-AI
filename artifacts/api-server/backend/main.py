@@ -160,3 +160,8 @@ if __name__ == "__main__":
         reload=False,
         log_level="info",
     )
+@app.get("/")
+def root():
+    return {
+        "message": "MindCheck AI Backend is Running!"
+    }
